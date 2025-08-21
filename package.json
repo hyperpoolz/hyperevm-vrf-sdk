@@ -20,6 +20,7 @@
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "dev": "tsup src/index.ts --watch --format esm,cjs --dts",
     "lint": "eslint .",
+    "test": "vitest run",
     "prepare": "pnpm build",
     "clean": "rimraf dist"
   },
@@ -43,6 +44,7 @@
     "@typescript-eslint/parser": "^8.40.0",
     "eslint": "^9.33.0",
     "eslint-plugin-import": "^2.32.0",
+    "vitest": "^2.1.4",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2"

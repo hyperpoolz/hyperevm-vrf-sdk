@@ -51,3 +51,9 @@ export interface ResolvedConfig {
   drand: { baseUrl: string; fetchTimeoutMs: number };
   gas?: { maxFeePerGasGwei?: number; maxPriorityFeePerGasGwei?: number };
 }
+
+/** Minimal beacon info needed by the SDK (evmnet/BN254). */
+export interface DrandBeaconInfo {
+  genesisTime: number;
+  period: number;
+}
