@@ -1,0 +1,50 @@
+{
+  "name": "hyperevm-vrf-sdk",
+  "version": "0.0.1",
+  "description": "Minimal, typed SDK skeleton for HyperEVM VRF",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --watch --format esm,cjs --dts",
+    "lint": "eslint .",
+    "prepare": "pnpm build",
+    "clean": "rimraf dist"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": ["vrf", "randomness", "drand", "hyperEVM", "sdk", "typescript"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhaiwat10/hyperevm-vrf-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dhaiwat10/hyperevm-vrf-sdk/issues"
+  },
+  "homepage": "https://github.com/dhaiwat10/hyperevm-vrf-sdk#readme",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
+    "eslint": "^9.33.0",
+    "eslint-plugin-import": "^2.32.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2"
+  }
+}
