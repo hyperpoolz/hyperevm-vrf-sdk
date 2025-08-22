@@ -108,6 +108,20 @@ export class HyperEVMVRF {
     } else if (policy.mode === "window") {
       // Window mode: target round must be within the specified window
       const maxWindow = policy.window ?? 1;
+      
+      // Check if target round is ahead of current round (negative difference)
+      if (roundDifference < 0n) {
+        throw new VrfPolicyViolationError(
+          requestId,
+          policy.mode,
+          maxWindow,
+          latestRound,
+          targetRound,
+          roundDifference
+        );
+      }
+      
+      // Check if round difference exceeds the window
       if (roundDifference > BigInt(maxWindow)) {
         throw new VrfPolicyViolationError(
           requestId,

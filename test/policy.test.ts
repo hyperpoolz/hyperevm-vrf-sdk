@@ -224,4 +224,52 @@ describe("Policy Validation", () => {
       }
     });
   });
+
+  describe("Additional Boundary Cases", () => {
+    it("should reject negative round differences (target ahead of current)", () => {
+      const vrfWindow = new HyperEVMVRF({
+        account: {
+          privateKey: process.env.PRIVATE_KEY as `0x${string}`,
+        },
+        policy: { mode: "window", window: 2 },
+      });
+
+      // Should reject case where target round is ahead of current round
+      expect(() => {
+        (vrfWindow as any).validatePolicy(1n, 102n, 100n); // target = 102, current = 100, diff = -2
+      }).toThrow(VrfPolicyViolationError);
+    });
+
+    it("should handle edge case of window = 0 with exact match", () => {
+      const vrfExact = new HyperEVMVRF({
+        account: {
+          privateKey: process.env.PRIVATE_KEY as `0x${string}`,
+        },
+        policy: { mode: "window", window: 0 },
+      });
+
+      // Should allow exact match when window = 0
+      expect(() => {
+        (vrfExact as any).validatePolicy(1n, 100n, 100n); // diff = 0
+      }).not.toThrow();
+    });
+
+    it("should handle edge case of window = 0 with any difference", () => {
+      const vrfExact = new HyperEVMVRF({
+        account: {
+          privateKey: process.env.PRIVATE_KEY as `0x${string}`,
+        },
+        policy: { mode: "window", window: 0 },
+      });
+
+      // Should reject any difference when window = 0
+      expect(() => {
+        (vrfExact as any).validatePolicy(1n, 100n, 101n); // diff = 1
+      }).toThrow(VrfPolicyViolationError);
+
+      expect(() => {
+        (vrfExact as any).validatePolicy(1n, 100n, 99n); // diff = -1
+      }).toThrow(VrfPolicyViolationError);
+    });
+  });
 });

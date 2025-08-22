@@ -69,6 +69,15 @@ The SDK enforces VRF request policies to ensure randomness quality and security:
 
 > **Note**: With DRAND's 30-second round interval, a window of 10000 rounds allows requests that are up to ~83 hours (3.5 days) old to be fulfilled. This ensures excellent user experience for most scenarios.
 
+#### Boundary Case Handling
+
+The SDK includes comprehensive boundary case handling for robust operation:
+
+- **Deadline == Genesis**: Handles cases where request deadline exactly matches or precedes genesis time
+- **Divisible Deltas**: Correctly processes time deltas that are exactly divisible by DRAND period
+- **Window Boundaries**: Enforces policy limits at exact window boundaries (0, 1, 2, etc.)
+- **Future Rounds**: Rejects attempts to fulfill with rounds that haven't been published yet
+
 ```ts
 // Strict policy - only fulfill with latest round
 const vrf = new HyperEVMVRF({
