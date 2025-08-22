@@ -121,4 +121,4 @@ const vrf = new HyperEVMVRF({
 
 ### License
 
-MIT © HyperEVM contributors
+MIT
