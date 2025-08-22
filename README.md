@@ -49,13 +49,53 @@ interface HyperevmVrfConfig {
   vrfAddress?: string;              // default: 0xCcf1703933D957c10CCD9062689AC376Df33e8E1
   chainId?: number;                 // default: 999 (HyperEVM)
   account: { privateKey: string };  // required
-  policy?: { mode: "strict" | "window"; window?: number }; // default: { mode: "window", window: 1 }
+  policy?: { mode: "strict" | "window"; window?: number }; // default: { mode: "window", window: 10000 }
   drand?: { baseUrl?: string; fetchTimeoutMs?: number };   // default: api.drand.sh/v2, 8000ms
   gas?: { maxFeePerGasGwei?: number; maxPriorityFeePerGasGwei?: number };
 }
 ```
 
 Defaults are exported from `defaultConfig` and `defaultVRFABI`.
+
+#### Policy Enforcement
+
+The SDK enforces VRF request policies to ensure randomness quality and security:
+
+- **`strict` mode**: Only allows fulfillment when the target round is exactly the latest published round
+- **`window` mode**: Allows fulfillment when the target round is within a specified window of the latest round
+- **No policy**: Explicitly disable policy enforcement by setting `policy: undefined`
+
+**Default Behavior**: When no policy is specified, the SDK uses a very generous window of 10000 rounds to ensure requests can be fulfilled even if they've been waiting for a long time. This provides maximum usability while still having some reasonable upper bound.
+
+> **Note**: With DRAND's 30-second round interval, a window of 10000 rounds allows requests that are up to ~83 hours (3.5 days) old to be fulfilled. This ensures excellent user experience for most scenarios.
+
+```ts
+// Strict policy - only fulfill with latest round
+const vrf = new HyperEVMVRF({
+  account: { privateKey: process.env.PRIVATE_KEY! },
+  policy: { mode: "strict" }
+});
+
+// Window policy - allow up to 3 rounds behind latest
+const vrf = new HyperEVMVRF({
+  account: { privateKey: process.env.PRIVATE_KEY! },
+  policy: { mode: "window", window: 3 }
+});
+
+// No policy enforcement - allow any round difference
+const vrf = new HyperEVMVRF({
+  account: { privateKey: process.env.PRIVATE_KEY! },
+  policy: undefined
+});
+
+// Default policy (very generous window=10000) when no policy specified
+const vrf = new HyperEVMVRF({
+  account: { privateKey: process.env.PRIVATE_KEY! }
+  // Uses default: { mode: "window", window: 10000 }
+});
+```
+
+Policy violations throw `VrfPolicyViolationError` with detailed context about the violation.
 
 ### Environment
 
@@ -87,6 +127,7 @@ The SDK provides comprehensive typed error handling with specific error classes 
 - **`VrfRequestError`** - Base class for VRF request-related errors
   - **`VrfRequestAlreadyFulfilledError`** - Request has already been fulfilled
   - **`VrfTargetRoundNotPublishedError`** - Target DRAND round not yet available
+  - **`VrfPolicyViolationError`** - Policy enforcement violations
 - **`DrandError`** - DRAND network or signature errors
   - **`DrandRoundMismatchError`** - Round mismatch between expected and received
   - **`DrandSignatureError`** - Invalid signature format
@@ -127,6 +168,9 @@ try {
     console.log(`Request ${error.requestId} already fulfilled`);
   } else if (error instanceof VrfTargetRoundNotPublishedError) {
     console.log(`Waiting ${error.secondsLeft}s for round ${error.targetRound}`);
+  } else if (error instanceof VrfPolicyViolationError) {
+    console.log(`Policy violation: ${error.policyMode} mode requires round difference <= ${error.policyWindow}`);
+    console.log(`Current: ${error.currentRound}, Target: ${error.targetRound}, Difference: ${error.roundDifference}`);
   }
 }
 ```

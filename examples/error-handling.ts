@@ -3,6 +3,7 @@ import {
   HyperEVMVrfError,
   VrfRequestAlreadyFulfilledError,
   VrfTargetRoundNotPublishedError,
+  VrfPolicyViolationError,
   DrandError,
   NetworkError,
   ConfigurationError,
@@ -48,6 +49,14 @@ async function demonstrateErrorHandling() {
       console.log("Target Round:", error.targetRound.toString());
       console.log("Latest Round:", error.latestRound.toString());
       console.log("Seconds Left:", error.secondsLeft.toString());
+    } else if (error instanceof VrfPolicyViolationError) {
+      console.log("Policy Violation:", error.message);
+      console.log("Request ID:", error.requestId.toString());
+      console.log("Policy Mode:", error.policyMode);
+      console.log("Policy Window:", error.policyWindow);
+      console.log("Current Round:", error.currentRound.toString());
+      console.log("Target Round:", error.targetRound.toString());
+      console.log("Round Difference:", error.roundDifference.toString());
     } else if (error instanceof ContractError) {
       console.log("Contract Error:", error.message);
       console.log("Contract Address:", error.contractAddress);

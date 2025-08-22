@@ -5,6 +5,7 @@ import { calculateTargetRound, fetchRoundSignature } from "./drand";
 import { 
   VrfRequestAlreadyFulfilledError, 
   VrfTargetRoundNotPublishedError,
+  VrfPolicyViolationError,
   ContractError,
   TransactionError,
   ConfigurationError
@@ -66,7 +67,7 @@ export class HyperEVMVRF {
       vrfAddress: cfg.vrfAddress ?? defaultConfig.vrfAddress,
       chainId: cfg.chainId ?? defaultConfig.chainId,
       account: cfg.account,
-      policy: cfg.policy ?? defaultConfig.policy,
+      policy: cfg.hasOwnProperty('policy') ? cfg.policy : defaultConfig.policy,
       drand: {
         baseUrl: cfg.drand?.baseUrl ?? defaultConfig.drand?.baseUrl,
         fetchTimeoutMs:
@@ -74,6 +75,50 @@ export class HyperEVMVRF {
       },
       gas: cfg.gas,
     };
+  }
+
+  /**
+   * Validates the VRF request against the configured policy
+   * @param requestId The VRF request ID
+   * @param targetRound The target DRAND round
+   * @param latestRound The latest available DRAND round
+   * @throws VrfPolicyViolationError if policy is violated
+   */
+  private validatePolicy(requestId: bigint, targetRound: bigint, latestRound: bigint): void {
+    const { policy } = this.cfg;
+    
+    if (!policy) {
+      return; // No policy configured, allow all
+    }
+
+    const roundDifference = latestRound - targetRound;
+    
+    if (policy.mode === "strict") {
+      // Strict mode: target round must be exactly the latest round
+      if (roundDifference !== 0n) {
+        throw new VrfPolicyViolationError(
+          requestId,
+          policy.mode,
+          0, // window is 0 for strict mode
+          latestRound,
+          targetRound,
+          roundDifference
+        );
+      }
+    } else if (policy.mode === "window") {
+      // Window mode: target round must be within the specified window
+      const maxWindow = policy.window ?? 1;
+      if (roundDifference > BigInt(maxWindow)) {
+        throw new VrfPolicyViolationError(
+          requestId,
+          policy.mode,
+          maxWindow,
+          latestRound,
+          targetRound,
+          roundDifference
+        );
+      }
+    }
   }
 
   public async fulfill(requestId: bigint): Promise<FulfillResult> {
@@ -110,6 +155,9 @@ export class HyperEVMVRF {
     if (latestRound < targetRound) {
       throw new VrfTargetRoundNotPublishedError(requestId, targetRound, latestRound, secondsLeft);
     }
+
+    // Validate policy before proceeding
+    this.validatePolicy(requestId, targetRound, latestRound);
 
     const signature = await fetchRoundSignature(targetRound);
 

@@ -10,7 +10,7 @@ export const defaultConfig: Required<
   rpcUrl: "https://rpc.hyperliquid.xyz/evm",
   vrfAddress: "0xCcf1703933D957c10CCD9062689AC376Df33e8E1",
   chainId: 999,
-  policy: { mode: "window", window: 1 },
+  policy: { mode: "window", window: 10000 }, // Very generous default - allows up to 10000 rounds behind
   drand: {
     baseUrl: "https://api.drand.sh/v2",
     fetchTimeoutMs: 8000,

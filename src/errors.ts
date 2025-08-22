@@ -47,6 +47,30 @@ export class VrfTargetRoundNotPublishedError extends VrfRequestError {
   }
 }
 
+export class VrfPolicyViolationError extends VrfRequestError {
+  constructor(
+    requestId: bigint,
+    public readonly policyMode: string,
+    public readonly policyWindow: number,
+    public readonly currentRound: bigint,
+    public readonly targetRound: bigint,
+    public readonly roundDifference: bigint
+  ) {
+    super(
+      `Policy violation: ${policyMode} mode requires round difference <= ${policyWindow}, got ${roundDifference}`,
+      requestId,
+      { 
+        policyMode, 
+        policyWindow, 
+        currentRound: currentRound.toString(), 
+        targetRound: targetRound.toString(), 
+        roundDifference: roundDifference.toString() 
+      }
+    );
+    this.name = 'VrfPolicyViolationError';
+  }
+}
+
 export class DrandError extends HyperEVMVrfError {
   constructor(
     message: string,
