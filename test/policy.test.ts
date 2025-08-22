@@ -272,4 +272,32 @@ describe("Policy Validation", () => {
       }).toThrow(VrfPolicyViolationError);
     });
   });
+
+  describe("Gas Configuration", () => {
+    it("should create instance with gas configuration", () => {
+      const vrf = new HyperEVMVRF({
+        account: {
+          privateKey: process.env.PRIVATE_KEY as `0x${string}`,
+        },
+        gas: { 
+          maxFeePerGasGwei: 100, 
+          maxPriorityFeePerGasGwei: 5 
+        },
+      });
+      expect(vrf).toBeInstanceOf(HyperEVMVRF);
+    });
+
+    it("should handle partial gas configuration", () => {
+      const vrf = new HyperEVMVRF({
+        account: {
+          privateKey: process.env.PRIVATE_KEY as `0x${string}`,
+        },
+        gas: { 
+          maxFeePerGasGwei: 75 
+          // maxPriorityFeePerGasGwei not specified
+        },
+      });
+      expect(vrf).toBeInstanceOf(HyperEVMVRF);
+    });
+  });
 });

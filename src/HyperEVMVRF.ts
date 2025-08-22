@@ -177,10 +177,29 @@ export class HyperEVMVRF {
 
     let tx: ethers.ContractTransactionResponse;
     try {
+      // Prepare transaction options with gas configuration
+      const txOptions: any = {};
+      
+      if (this.cfg.gas?.maxFeePerGasGwei) {
+        // Convert Gwei to Wei (1 Gwei = 10^9 Wei)
+        txOptions.maxFeePerGas = BigInt(this.cfg.gas.maxFeePerGasGwei) * 1000000000n;
+        console.log(`Setting maxFeePerGas: ${this.cfg.gas.maxFeePerGasGwei} Gwei (${txOptions.maxFeePerGas} Wei)`);
+      }
+      
+      if (this.cfg.gas?.maxPriorityFeePerGasGwei) {
+        // Convert Gwei to Wei (1 Gwei = 10^9 Wei)
+        txOptions.maxPriorityFeePerGas = BigInt(this.cfg.gas.maxPriorityFeePerGasGwei) * 1000000000n;
+        console.log(`Setting maxPriorityFeePerGas: ${this.cfg.gas.maxPriorityFeePerGasGwei} Gwei (${txOptions.maxPriorityFeePerGas} Wei)`);
+      }
+
+      if (Object.keys(txOptions).length > 0) {
+        console.log("Transaction gas options:", txOptions);
+      }
+
       tx = await vrfContract.fulfillRandomness(requestId, targetRound, [
         signature[0],
         signature[1],
-      ]);
+      ], txOptions);
     } catch (error) {
       throw new ContractError(
         `Failed to fulfill VRF randomness for request ${requestId}`,

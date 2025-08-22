@@ -54,6 +54,19 @@ describe("HyperEVMVRF", () => {
       });
       expect(vrf).toBeInstanceOf(HyperEVMVRF);
     });
+
+    it("should create instance with gas configuration", () => {
+      const vrf = new HyperEVMVRF({
+        account: {
+          privateKey: process.env.PRIVATE_KEY as `0x${string}`,
+        },
+        gas: { 
+          maxFeePerGasGwei: 50, 
+          maxPriorityFeePerGasGwei: 2 
+        },
+      });
+      expect(vrf).toBeInstanceOf(HyperEVMVRF);
+    });
   });
 
   describe("fulfill", () => {

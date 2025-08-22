@@ -106,6 +106,26 @@ const vrf = new HyperEVMVRF({
 
 Policy violations throw `VrfPolicyViolationError` with detailed context about the violation.
 
+#### Gas Configuration
+
+The SDK supports custom gas settings for VRF fulfillment transactions:
+
+```ts
+const vrf = new HyperEVMVRF({
+  account: { privateKey: process.env.PRIVATE_KEY! },
+  gas: { 
+    maxFeePerGasGwei: 50,        // Maximum fee per gas in Gwei
+    maxPriorityFeePerGasGwei: 2  // Maximum priority fee per gas in Gwei
+  }
+});
+```
+
+**Gas Settings**:
+- **`maxFeePerGasGwei`**: Maximum total fee per gas (base fee + priority fee) in Gwei
+- **`maxPriorityFeePerGasGwei`**: Maximum priority fee per gas in Gwei (tip for miners/validators)
+
+> **Note**: Values are specified in Gwei for convenience and automatically converted to Wei for transaction submission.
+
 ### Environment
 
 - Node.js >= 18
@@ -239,7 +259,7 @@ const vrf = new HyperEVMVRF({
   chainId: 999,
   account: { privateKey: process.env.WALLET_PRIVATE_KEY! },
   drand: { baseUrl: "https://api.drand.sh/v2", fetchTimeoutMs: 8000 },
-  gas: { maxFeePerGasGwei: 2, maxPriorityFeePerGasGwei: 1 },
+  gas: { maxFeePerGasGwei: 50, maxPriorityFeePerGasGwei: 2 },
 });
 ```
 
