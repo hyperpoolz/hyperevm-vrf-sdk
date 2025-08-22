@@ -1,10 +1,8 @@
 import { httpsGet } from "./utils";
 import { DrandSignatureError, DrandRoundMismatchError } from "./errors.js";
 
-const DRAND_BASE_URL = "https://api.drand.sh/v2";
-
-export const getBeaconInfo = async () => {
-  const info = await httpsGet(`${DRAND_BASE_URL}/beacons/evmnet/info`);
+export const getBeaconInfo = async (baseUrl: string, beacon: string) => {
+  const info = await httpsGet(`${baseUrl}/beacons/${beacon}/info`);
   return info as { genesis_time: string; period: string };
 };
 
@@ -34,11 +32,15 @@ function formatDuration(seconds: number) {
 
 export const calculateTargetRound = async (
   deadline: bigint,
-  minRound: bigint
+  minRound: bigint,
+  opts?: { baseUrl?: string; beacon?: string }
 ) => {
   console.log("\n3. Calculating target round...");
 
-  const info = await getBeaconInfo();
+  const baseUrl = opts?.baseUrl ?? "https://api.drand.sh/v2";
+  const beacon = opts?.beacon ?? "evmnet";
+
+  const info = await getBeaconInfo(baseUrl, beacon);
   const genesis = BigInt(info.genesis_time);
   const period = BigInt(info.period);
 
@@ -81,9 +83,15 @@ function hexToBigIntPair(sigHex: string) {
   return [x, y];
 }
 
-export const fetchRoundSignature = async (round: bigint) => {
+export const fetchRoundSignature = async (
+  round: bigint,
+  opts?: { baseUrl?: string; beacon?: string }
+) => {
+  const baseUrl = opts?.baseUrl ?? "https://api.drand.sh/v2";
+  const beacon = opts?.beacon ?? "evmnet";
+
   const roundData = (await httpsGet(
-    `${DRAND_BASE_URL}/beacons/evmnet/rounds/${round}`
+    `${baseUrl}/beacons/${beacon}/rounds/${round}`
   )) as { round: string; signature: string };
 
   if (BigInt(roundData.round) !== round) {

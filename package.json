@@ -1,5 +1,5 @@
 {
-  "name": "hyperevm-vrf-sdk",
+  "name": "evm-randomness",
   "version": "0.4.0",
   "description": "Minimal, typed SDK skeleton for HyperEVM VRF",
   "license": "MIT",
@@ -29,6 +29,9 @@
     "README.md",
     "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": false,
   "keywords": [
     "vrf",
