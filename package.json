@@ -30,7 +30,14 @@
     "LICENSE"
   ],
   "sideEffects": false,
-  "keywords": ["vrf", "randomness", "drand", "hyperEVM", "sdk", "typescript"],
+  "keywords": [
+    "vrf",
+    "randomness",
+    "drand",
+    "hyperEVM",
+    "sdk",
+    "typescript"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dhaiwat10/hyperevm-vrf-sdk.git"
@@ -40,13 +47,19 @@
   },
   "homepage": "https://github.com/dhaiwat10/hyperevm-vrf-sdk#readme",
   "devDependencies": {
+    "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
+    "dotenv": "^17.2.1",
     "eslint": "^9.33.0",
     "eslint-plugin-import": "^2.32.0",
-    "vitest": "^2.1.4",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.4"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0",
+    "https": "^1.0.0"
   }
 }

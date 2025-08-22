@@ -1,18 +1,10 @@
-export interface ContractConfig {
-    address: string;
-}
+import { ethers, InterfaceAbi } from "ethers";
 
-export class VrfContract {
-    private readonly config: ContractConfig;
-
-    constructor(config: ContractConfig) {
-        this.config = config;
-    }
-
-    public async requestRandomness(): Promise<string> {
-        void this.config;
-        return '0x';
-    }
-}
-
-
+export const getVRFContract = (
+  address: string,
+  abi: InterfaceAbi,
+  signer: ethers.Signer
+) => {
+  const contract = new ethers.Contract(address, abi, signer);
+  return contract;
+};
