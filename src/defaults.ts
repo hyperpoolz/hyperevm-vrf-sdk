@@ -14,6 +14,8 @@ export const defaultConfig: Required<
   drand: {
     baseUrl: "https://api.drand.sh/v2",
     fetchTimeoutMs: 8000,
+    // default beacon used by HyperEVM VRF deployments
+    beacon: "evmnet",
   },
 };
 
@@ -56,6 +58,14 @@ export function validateConfig(config: Partial<HyperevmVrfConfig>): void {
       'DRAND fetch timeout must be at least 1000ms',
       'drand.fetchTimeoutMs',
       { fetchTimeoutMs: config.drand.fetchTimeoutMs }
+    );
+  }
+
+  if (config.drand && (config.drand as any).beacon && typeof (config.drand as any).beacon !== 'string') {
+    throw new ConfigurationError(
+      'DRAND beacon must be a string',
+      'drand.beacon',
+      { beacon: (config.drand as any).beacon }
     );
   }
 

@@ -1,11 +1,37 @@
 # HyperEVM VRF SDK
 
-TypeScript SDK to fulfill HyperEVM on-chain VRF requests using drand (evmnet) randomness.
+TypeScript SDK to request and fulfill on-chain VRF using DRAND beacons.
 
-### Features
-- **Typed API** with ESM/CJS builds
-- **One-call fulfill**: fetch target round, verify availability, submit on-chain
-- **Sane defaults** for RPC, VRF contract, chain id, and drand endpoint
+### TL;DR (Quick Start)
+- Install: `pnpm add evm-randomness`
+- Minimal usage:
+```ts
+import { HyperEVMVRF } from "evm-randomness";
+const vrf = new HyperEVMVRF({ account: { privateKey: process.env.PRIVATE_KEY! }, chainId: 999 });
+const { requestId } = await vrf.requestRandomness({ deadline: BigInt(Math.floor(Date.now()/1000)+120) });
+await vrf.fulfillWithWait(requestId);
+```
+
+#### No private key input (generate ephemeral wallet)
+```ts
+import { createEphemeralWallet } from "evm-randomness";
+
+const { vrf, address } = await createEphemeralWallet({
+  chainId: 999,
+  minBalanceWei: 1_000_000_000_000_000n, // 0.001 HYPE
+});
+console.log("Send gas to:", address);
+
+const deadline = BigInt(Math.floor(Date.now()/1000)+120);
+const { requestId } = await vrf.requestRandomness({ deadline });
+await vrf.fulfillWithWait(requestId);
+```
+
+### Why this SDK
+- **Request + Fulfill** DRAND-powered VRF on HyperEVM
+- **Typed API**, ESM/CJS builds
+- **Chain-aware defaults** (rpc, VRF address, DRAND beacon), configurable
+- **Policy control** (strict/window/none) and **wait-until-published** helpers
 
 ### Installation
 
@@ -20,7 +46,7 @@ yarn add hyperevm-vrf-sdk
 ### Quickstart
 
 ```ts
-import { HyperEVMVRF } from "hyperevm-vrf-sdk";
+import { HyperEVMVRF } from "evm-randomness";
 
 const vrf = new HyperEVMVRF({
   account: { privateKey: process.env.WALLET_PRIVATE_KEY! },
@@ -39,23 +65,27 @@ This will:
 - Submit `fulfillRandomness` on-chain
 - Return fulfillment details including transaction hash
 
-### Configuration
+### Configuration (Schema)
 
 `new HyperEVMVRF(config)` accepts:
 
 ```ts
 interface HyperevmVrfConfig {
-  rpcUrl?: string;                  // default: https://rpc.hyperliquid.xyz/evm
-  vrfAddress?: string;              // default: 0xCcf1703933D957c10CCD9062689AC376Df33e8E1
+  rpcUrl?: string;                  // default resolved from chain (or HyperEVM)
+  vrfAddress?: string;              // default resolved from chain (or HyperEVM)
   chainId?: number;                 // default: 999 (HyperEVM)
   account: { privateKey: string };  // required
-  policy?: { mode: "strict" | "window"; window?: number }; // default: { mode: "window", window: 10000 }
-  drand?: { baseUrl?: string; fetchTimeoutMs?: number };   // default: api.drand.sh/v2, 8000ms
+  policy?: { mode: "strict" | "window"; window?: number } | undefined; // default: { mode: "window", window: 10000 }
+  drand?: { baseUrl?: string; fetchTimeoutMs?: number; beacon?: string }; // defaults: api.drand.sh/v2, 8000ms, evmnet
   gas?: { maxFeePerGasGwei?: number; maxPriorityFeePerGasGwei?: number };
 }
 ```
 
-Defaults are exported from `defaultConfig` and `defaultVRFABI`.
+Defaults are exported from `defaultConfig` and `defaultVRFABI`. Chain info available via `CHAINS`.
+
+### Address/Chain Resolution
+- If you pass `chainId`, the SDK will resolve reasonable defaults (rpcUrl, drand beacon, and optionally a known `vrfAddress`).
+- You can override any field explicitly in config.
 
 #### Policy Enforcement
 
@@ -139,11 +169,17 @@ WALLET_PRIVATE_KEY=0xabc123...
 
 Load it in scripts/tests with `dotenv` if needed.
 
-### API
+### API (Surface)
 
 - **class `HyperEVMVRF`**
   - `constructor(config: HyperevmVrfConfig)`
+  - `requestRandomness({ deadline, consumer?, salt? }): Promise<{ requestId, txHash }>`
   - `fulfill(requestId: bigint): Promise<FulfillResult>`
+  - `fulfillWithWait(requestId: bigint, opts?): Promise<FulfillResult>`
+  - `requestAndFulfill({ deadline, consumer?, salt?, wait? }): Promise<{ requestId, round, signature, requestTxHash, fulfillTxHash }>`
+
+- **helper**
+  - `createEphemeralWallet(options): Promise<{ vrf, address }>` – in-memory account + optional funding wait
 
 ### Error Handling
 
@@ -207,7 +243,7 @@ try {
 #### Error Codes
 
 ```ts
-import { ERROR_CODES } from "hyperevm-vrf-sdk";
+import { ERROR_CODES } from "evm-randomness";
 
 // Available error codes:
 // ERROR_CODES.VRF_REQUEST_ERROR
@@ -233,15 +269,18 @@ interface FulfillResult {
 
 ### Usage Examples
 
-- Minimal script:
+- Minimal request + fulfill:
 
 ```ts
 import "dotenv/config";
 import { HyperEVMVRF } from "hyperevm-vrf-sdk";
 
 async function main() {
-  const vrf = new HyperEVMVRF({ account: { privateKey: process.env.WALLET_PRIVATE_KEY! } });
-  await vrf.fulfill(1234n);
+  const vrf = new HyperEVMVRF({ account: { privateKey: process.env.PRIVATE_KEY! }, chainId: 999, policy: undefined });
+  const deadline = BigInt(Math.floor(Date.now()/1000)+120);
+  const { requestId } = await vrf.requestRandomness({ deadline });
+  const res = await vrf.fulfillWithWait(requestId);
+  console.log(res);
 }
 
 main().catch((err) => {
@@ -258,7 +297,7 @@ const vrf = new HyperEVMVRF({
   vrfAddress: "0xCcf1703933D957c10CCD9062689AC376Df33e8E1",
   chainId: 999,
   account: { privateKey: process.env.WALLET_PRIVATE_KEY! },
-  drand: { baseUrl: "https://api.drand.sh/v2", fetchTimeoutMs: 8000 },
+  drand: { baseUrl: "https://api.drand.sh/v2", fetchTimeoutMs: 8000, beacon: "evmnet" },
   gas: { maxFeePerGasGwei: 50, maxPriorityFeePerGasGwei: 2 },
 });
 ```
@@ -266,7 +305,7 @@ const vrf = new HyperEVMVRF({
 ### How it works (high level)
 
 - Reads the VRF request from the contract
-- Queries drand (evmnet) for beacon info to map deadline -> round
+- Queries DRAND beacon for info to map deadline -> round
 - Ensures the target round is published, fetches its BLS signature
 - Calls `fulfillRandomness(id, round, signature)` on the VRF contract
 
@@ -276,6 +315,11 @@ const vrf = new HyperEVMVRF({
 - `pnpm dev` – watch build
 - `pnpm lint` – eslint check
 - `pnpm test` – run unit tests (vitest)
+
+### Scope / Notes
+- This SDK performs DRAND round selection (`max(minRound, roundFromDeadline)`) and signature retrieval.
+- Default policy is permissive (`window=10000`). Set `policy: undefined` to disable or `strict/window` to enforce.
+- For consumer contracts like your Lottery V2, you typically don’t need `requestRandomness()` because the consumer requests it during its flow; you only need `fulfill*`.
 
 ### License
 
