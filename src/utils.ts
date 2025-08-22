@@ -1,4 +1,5 @@
 import https from "https";
+import { HttpError, JsonParseError } from "./errors.js";
 
 export function httpsGet(url: string) {
   return new Promise((resolve, reject) => {
@@ -9,14 +10,14 @@ export function httpsGet(url: string) {
         res.on("end", () => {
           if (res.statusCode !== 200) {
             return reject(
-              new Error(`HTTP ${res.statusCode} from ${url}: ${data}`)
+              new HttpError(url, res.statusCode!, data)
             );
           }
           try {
             resolve(JSON.parse(data));
           } catch (err) {
             reject(
-              new Error(`Invalid JSON from ${url}: ${data.slice(0, 200)}`)
+              new JsonParseError(url, data, err instanceof Error ? err.message : String(err))
             );
           }
         });

@@ -1,7 +1,14 @@
 import { ethers } from "ethers";
 import { getVRFContract } from "./contract";
-import { defaultVRFABI, defaultConfig } from "./defaults";
+import { defaultVRFABI, defaultConfig, validateConfig } from "./defaults";
 import { calculateTargetRound, fetchRoundSignature } from "./drand";
+import { 
+  VrfRequestAlreadyFulfilledError, 
+  VrfTargetRoundNotPublishedError,
+  ContractError,
+  TransactionError,
+  ConfigurationError
+} from "./errors.js";
 
 export interface HyperevmVrfConfig {
   rpcUrl?: string; // default https://rpc.hyperliquid.xyz/evm
@@ -23,12 +30,37 @@ type VrfRequest = {
   randomness?: string;
 };
 
+type FulfillResult = {
+  requestId: bigint;
+  round: bigint;
+  signature: [bigint, bigint];
+  txHash: `0x${string}`;
+};
+
 export class HyperEVMVRF {
-  private readonly cfg: HyperevmVrfConfig & Required<
-    Pick<HyperevmVrfConfig, "rpcUrl" | "vrfAddress" | "chainId">
-  >;
+  private readonly cfg: HyperevmVrfConfig &
+    Required<Pick<HyperevmVrfConfig, "rpcUrl" | "vrfAddress" | "chainId">>;
 
   constructor(cfg: HyperevmVrfConfig) {
+    // Validate configuration
+    validateConfig(cfg);
+
+    // Validate account configuration
+    if (!cfg.account?.privateKey) {
+      throw new ConfigurationError(
+        'Account private key is required',
+        'account.privateKey'
+      );
+    }
+
+    if (!cfg.account.privateKey.startsWith('0x') || cfg.account.privateKey.length !== 66) {
+      throw new ConfigurationError(
+        'Private key must be a valid 32-byte hex string with 0x prefix',
+        'account.privateKey',
+        { privateKeyLength: cfg.account.privateKey.length }
+      );
+    }
+
     this.cfg = {
       rpcUrl: cfg.rpcUrl ?? defaultConfig.rpcUrl,
       vrfAddress: cfg.vrfAddress ?? defaultConfig.vrfAddress,
@@ -44,7 +76,7 @@ export class HyperEVMVRF {
     };
   }
 
-  public async fulfill(requestId: bigint): Promise<void> {
+  public async fulfill(requestId: bigint): Promise<FulfillResult> {
     const vrfAddress = this.cfg.vrfAddress;
 
     const provider = new ethers.JsonRpcProvider(this.cfg.rpcUrl);
@@ -52,34 +84,69 @@ export class HyperEVMVRF {
 
     const vrfContract = getVRFContract(vrfAddress, defaultVRFABI, signer);
 
-    const request = (await vrfContract.getRequest(
-      requestId
-    )) as unknown as VrfRequest;
-
-    if (request.fulfilled) {
-      throw new Error("Request already fulfilled");
+    let request: VrfRequest;
+    try {
+      request = (await vrfContract.getRequest(
+        requestId
+      )) as unknown as VrfRequest;
+    } catch (error) {
+      throw new ContractError(
+        `Failed to get VRF request ${requestId}`,
+        vrfAddress,
+        'getRequest',
+        { requestId: requestId.toString(), error: error instanceof Error ? error.message : String(error) }
+      );
     }
 
-    const { targetRound, latestRound } = await calculateTargetRound(
+    if (request.fulfilled) {
+      throw new VrfRequestAlreadyFulfilledError(requestId);
+    }
+
+    const { targetRound, latestRound, secondsLeft } = await calculateTargetRound(
       request.deadline,
       request.minRound
     );
 
     if (latestRound < targetRound) {
-      throw new Error("Target round is not yet published");
+      throw new VrfTargetRoundNotPublishedError(requestId, targetRound, latestRound, secondsLeft);
     }
 
     const signature = await fetchRoundSignature(targetRound);
 
-    const tx = await vrfContract.fulfillRandomness(requestId, targetRound, [
-      signature[0],
-      signature[1],
-    ]);
+    let tx: ethers.ContractTransactionResponse;
+    try {
+      tx = await vrfContract.fulfillRandomness(requestId, targetRound, [
+        signature[0],
+        signature[1],
+      ]);
+    } catch (error) {
+      throw new ContractError(
+        `Failed to fulfill VRF randomness for request ${requestId}`,
+        vrfAddress,
+        'fulfillRandomness',
+        { requestId: requestId.toString(), targetRound: targetRound.toString(), error: error instanceof Error ? error.message : String(error) }
+      );
+    }
 
     console.log("Transaction sent:", tx.hash);
 
-    await tx.wait();
+    try {
+      await tx.wait();
+      console.log("Transaction mined:", tx.hash);
+    } catch (error) {
+      throw new TransactionError(
+        `Transaction ${tx.hash} failed to be mined`,
+        tx.hash,
+        'wait',
+        { requestId: requestId.toString(), error: error instanceof Error ? error.message : String(error) }
+      );
+    }
 
-    console.log("Transaction mined:", tx.hash);
+    return {
+      requestId,
+      round: targetRound,
+      signature: [signature[0], signature[1]],
+      txHash: tx.hash as `0x${string}`,
+    };
   }
 }

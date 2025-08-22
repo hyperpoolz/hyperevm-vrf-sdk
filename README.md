@@ -10,11 +10,11 @@ TypeScript SDK to fulfill HyperEVM on-chain VRF requests using drand (evmnet) ra
 ### Installation
 
 ```bash
-pnpm add hyperevm-vrf-sdk ethers
+pnpm add hyperevm-vrf-sdk
 # or
-npm i hyperevm-vrf-sdk ethers
+npm i hyperevm-vrf-sdk
 # or
-yarn add hyperevm-vrf-sdk ethers
+yarn add hyperevm-vrf-sdk
 ```
 
 ### Quickstart
@@ -27,7 +27,9 @@ const vrf = new HyperEVMVRF({
   // optional overrides shown below
 });
 
-await vrf.fulfill(1234n);
+const result = await vrf.fulfill(1234n);
+console.log(`Fulfilled request ${result.requestId} with round ${result.round}`);
+console.log(`Transaction hash: ${result.txHash}`);
 ```
 
 This will:
@@ -35,6 +37,7 @@ This will:
 - Compute the required drand round from the request deadline and minRound
 - Wait until the round is available (if needed) and fetch its signature
 - Submit `fulfillRandomness` on-chain
+- Return fulfillment details including transaction hash
 
 ### Configuration
 
@@ -71,7 +74,89 @@ Load it in scripts/tests with `dotenv` if needed.
 
 - **class `HyperEVMVRF`**
   - `constructor(config: HyperevmVrfConfig)`
-  - `fulfill(requestId: bigint): Promise<void>`
+  - `fulfill(requestId: bigint): Promise<FulfillResult>`
+
+### Error Handling
+
+The SDK provides comprehensive typed error handling with specific error classes for different failure scenarios:
+
+#### Error Classes
+
+- **`HyperEVMVrfError`** - Base error class for all SDK errors
+- **`ConfigurationError`** - Invalid configuration parameters
+- **`VrfRequestError`** - Base class for VRF request-related errors
+  - **`VrfRequestAlreadyFulfilledError`** - Request has already been fulfilled
+  - **`VrfTargetRoundNotPublishedError`** - Target DRAND round not yet available
+- **`DrandError`** - DRAND network or signature errors
+  - **`DrandRoundMismatchError`** - Round mismatch between expected and received
+  - **`DrandSignatureError`** - Invalid signature format
+- **`NetworkError`** - Network communication errors
+  - **`HttpError`** - HTTP status code errors
+  - **`JsonParseError`** - JSON parsing failures
+- **`ContractError`** - Smart contract interaction errors
+- **`TransactionError`** - Transaction mining failures
+
+#### Error Properties
+
+All errors include:
+- `message`: Human-readable error description
+- `code`: Error category identifier
+- `details`: Additional context information
+- `name`: Error class name for type checking
+
+#### Example Error Handling
+
+```ts
+import { HyperEVMVRF, ConfigurationError, VrfRequestAlreadyFulfilledError } from "hyperevm-vrf-sdk";
+
+try {
+  const vrf = new HyperEVMVRF({
+    account: { privateKey: "invalid_key" }
+  });
+} catch (error) {
+  if (error instanceof ConfigurationError) {
+    console.log(`Configuration error in field: ${error.field}`);
+    console.log(`Details:`, error.details);
+  }
+}
+
+try {
+  await vrf.fulfill(requestId);
+} catch (error) {
+  if (error instanceof VrfRequestAlreadyFulfilledError) {
+    console.log(`Request ${error.requestId} already fulfilled`);
+  } else if (error instanceof VrfTargetRoundNotPublishedError) {
+    console.log(`Waiting ${error.secondsLeft}s for round ${error.targetRound}`);
+  }
+}
+```
+
+#### Error Codes
+
+```ts
+import { ERROR_CODES } from "hyperevm-vrf-sdk";
+
+// Available error codes:
+// ERROR_CODES.VRF_REQUEST_ERROR
+// ERROR_CODES.DRAND_ERROR  
+// ERROR_CODES.NETWORK_ERROR
+// ERROR_CODES.CONFIGURATION_ERROR
+// ERROR_CODES.CONTRACT_ERROR
+// ERROR_CODES.TRANSACTION_ERROR
+```
+
+#### Return Types
+
+The `fulfill` method returns a `FulfillResult` object:
+
+```ts
+interface FulfillResult {
+  requestId: bigint;           // The fulfilled request ID
+  round: bigint;               // The DRAND round used
+  signature: [bigint, bigint]; // BLS signature components
+  txHash: `0x${string}`;      // Transaction hash
+}
+```
 
 ### Usage Examples
 

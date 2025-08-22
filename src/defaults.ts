@@ -1,4 +1,5 @@
 import type { HyperevmVrfConfig } from "./HyperEVMVRF";
+import { ConfigurationError } from "./errors.js";
 
 export const defaultConfig: Required<
   Pick<
@@ -15,6 +16,65 @@ export const defaultConfig: Required<
     fetchTimeoutMs: 8000,
   },
 };
+
+// Configuration validation function
+export function validateConfig(config: Partial<HyperevmVrfConfig>): void {
+  if (config.rpcUrl && !config.rpcUrl.startsWith('http')) {
+    throw new ConfigurationError(
+      'RPC URL must be a valid HTTP/HTTPS URL',
+      'rpcUrl',
+      { rpcUrl: config.rpcUrl }
+    );
+  }
+
+  if (config.vrfAddress && !config.vrfAddress.startsWith('0x')) {
+    throw new ConfigurationError(
+      'VRF address must be a valid Ethereum address',
+      'vrfAddress',
+      { vrfAddress: config.vrfAddress }
+    );
+  }
+
+  if (config.chainId && (config.chainId < 1 || config.chainId > 0x7fffffff)) {
+    throw new ConfigurationError(
+      'Chain ID must be a positive integer',
+      'chainId',
+      { chainId: config.chainId }
+    );
+  }
+
+  if (config.policy?.window && config.policy.window < 1) {
+    throw new ConfigurationError(
+      'Policy window must be at least 1',
+      'policy.window',
+      { window: config.policy.window }
+    );
+  }
+
+  if (config.drand?.fetchTimeoutMs && config.drand.fetchTimeoutMs < 1000) {
+    throw new ConfigurationError(
+      'DRAND fetch timeout must be at least 1000ms',
+      'drand.fetchTimeoutMs',
+      { fetchTimeoutMs: config.drand.fetchTimeoutMs }
+    );
+  }
+
+  if (config.gas?.maxFeePerGasGwei && config.gas.maxFeePerGasGwei < 0) {
+    throw new ConfigurationError(
+      'Max fee per gas must be non-negative',
+      'gas.maxFeePerGasGwei',
+      { maxFeePerGasGwei: config.gas.maxFeePerGasGwei }
+    );
+  }
+
+  if (config.gas?.maxPriorityFeePerGasGwei && config.gas.maxPriorityFeePerGasGwei < 0) {
+    throw new ConfigurationError(
+      'Max priority fee per gas must be non-negative',
+      'gas.maxPriorityFeePerGasGwei',
+      { maxPriorityFeePerGasGwei: config.gas.maxPriorityFeePerGasGwei }
+    );
+  }
+}
 
 export const defaultVRFABI = [
   {

@@ -1,4 +1,5 @@
 import { httpsGet } from "./utils";
+import { DrandSignatureError, DrandRoundMismatchError } from "./errors.js";
 
 const DRAND_BASE_URL = "https://api.drand.sh/v2";
 
@@ -74,7 +75,7 @@ export const calculateTargetRound = async (
 function hexToBigIntPair(sigHex: string) {
   const h = sigHex.startsWith("0x") ? sigHex.slice(2) : sigHex;
   if (h.length !== 128)
-    throw new Error(`Expected 128 hex chars, got ${h.length}`);
+    throw new DrandSignatureError(sigHex, 128, h.length);
   const x = BigInt("0x" + h.slice(0, 64));
   const y = BigInt("0x" + h.slice(64));
   return [x, y];
@@ -86,9 +87,7 @@ export const fetchRoundSignature = async (round: bigint) => {
   )) as { round: string; signature: string };
 
   if (BigInt(roundData.round) !== round) {
-    throw new Error(
-      `Round mismatch: expected ${round}, got ${roundData.round}`
-    );
+    throw new DrandRoundMismatchError(round, roundData.round);
   }
 
   const signature = hexToBigIntPair(roundData.signature);
