@@ -36,11 +36,11 @@ await vrf.fulfillWithWait(requestId);
 ### Installation
 
 ```bash
-pnpm add hyperevm-vrf-sdk
+pnpm add evm-randomness
 # or
-npm i hyperevm-vrf-sdk
+npm i evm-randomness
 # or
-yarn add hyperevm-vrf-sdk
+yarn add evm-randomness
 ```
 
 ### Quickstart
@@ -213,7 +213,7 @@ All errors include:
 #### Example Error Handling
 
 ```ts
-import { HyperEVMVRF, ConfigurationError, VrfRequestAlreadyFulfilledError } from "hyperevm-vrf-sdk";
+import { HyperEVMVRF, ConfigurationError, VrfRequestAlreadyFulfilledError } from "evm-randomness";
 
 try {
   const vrf = new HyperEVMVRF({
@@ -273,7 +273,7 @@ interface FulfillResult {
 
 ```ts
 import "dotenv/config";
-import { HyperEVMVRF } from "hyperevm-vrf-sdk";
+import { HyperEVMVRF } from "evm-randomness";
 
 async function main() {
   const vrf = new HyperEVMVRF({ account: { privateKey: process.env.PRIVATE_KEY! }, chainId: 999, policy: undefined });
